@@ -23,23 +23,25 @@ class Riddle implements RiddleRMI {
 	private Timestamp responseTime;
 	private String answer = "";
 	private Thread timeout;
+	private String bindingName;
 
 	public Riddle(String question, Timestamp responseTime) {
 		this.question = question;
 		this.responseTime = responseTime;
 		this.creationDate = new Date();
 
+		this.bindingName = "riddle-" + this.creationDate.getTime();
 		this.setTimeout();
-		postRiddle(this);
+		this.postRiddle();
 	}
 
-	private static void postRiddle(RiddleRMI r) {
+	private void postRiddle() {
 		try {
-			Remote stub = (Remote) UnicastRemoteObject.exportObject(r, 0);
+			Remote stub = (Remote) UnicastRemoteObject.exportObject(this, 0);
 			System.out.println("Exported riddle");
-			Registry registry = LocateRegistry.createRegistry(1099);
+			Registry registry = LocateRegistry.getRegistry(1099);
 			System.out.println("Got registry");
-			registry.bind("Hello", stub);
+			registry.bind(this.bindingName, stub);
 			System.out.println("Server ready");
 		} catch (Exception e) {
 			System.err.println("Server exception: " + e.toString());
@@ -47,14 +49,18 @@ class Riddle implements RiddleRMI {
 		}
 	}
 
-	private static void retractRiddle(RiddleRMI r) {
+	private void retractRiddle() {
 		try {
 			Registry registry = LocateRegistry.getRegistry(1099);
-			registry.unbind("Hello");
+			registry.unbind(this.bindingName);
 		} catch (Exception e) {
 			System.err.println("Server exception: " + e.toString());
 			e.printStackTrace();
 		}
+	}
+
+	public String toString() {
+		return "Riddle: " + this.question + ", answer: " + (this.isAnswered() ? this.answer : "not answered yet");
 	}
 
 	public String getQuestion() throws RemoteException {
@@ -69,9 +75,14 @@ class Riddle implements RiddleRMI {
 		this.answer = answer;
 	}
 
+	public boolean isAnswered() {
+		return !answer.equals("");
+	}
+
 	public void remove() {
-		System.out.println("Riddle removed, answer: " + answer);
-		retractRiddle(this);
+		if (!isAnswered())
+			System.out.println("Riddle \"" + question + "\" timed out");
+		retractRiddle();
 	}
 
 	public void setTimeout() {
@@ -81,7 +92,8 @@ class Riddle implements RiddleRMI {
 			public void run() {
 				try {
 					Thread.sleep(waitTime);
-					remove();
+					if (!isAnswered())
+						remove();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
