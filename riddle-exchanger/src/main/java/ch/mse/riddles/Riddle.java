@@ -19,6 +19,8 @@ interface RiddleRMI extends Remote {
 	public void answer(String encryptedAnswer) throws RemoteException;
 
 	public boolean isAnswered() throws RemoteException;
+
+	public boolean isImportant() throws RemoteException;
 }
 
 class Riddle implements RiddleRMI {
@@ -30,14 +32,16 @@ class Riddle implements RiddleRMI {
 	private String bindingName;
 	private PublicKey targetPubKey;
 	private KeyPair ownerKeyPair;
+	private boolean important;
 
-	public Riddle(String question, Timestamp responseTime, PublicKey targetPubKey, KeyPair ownerPair) {
+	public Riddle(String question, Timestamp responseTime, PublicKey targetPubKey, KeyPair ownerPair, boolean important) {
 		this.question = question;
 		this.responseTime = responseTime;
 		this.creationDate = new Date();
 		this.targetPubKey = targetPubKey;
 		this.ownerKeyPair = ownerPair;
 		this.bindingName = "riddle-" + this.creationDate.getTime();
+		this.important = important;
 		this.setTimeout();
 		this.postRiddle();
 	}
@@ -84,6 +88,10 @@ class Riddle implements RiddleRMI {
 
 	public boolean isAnswered() {
 		return !(encryptedAnswer == null);
+	}
+
+	public boolean isImportant() {
+		return important;
 	}
 
 	public void remove() {

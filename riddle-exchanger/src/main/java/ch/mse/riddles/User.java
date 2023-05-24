@@ -94,9 +94,9 @@ class User implements UserRMI {
 		postUser(this);
 	}
 
-	public void createRiddle(String question, String receiver, Timestamp responseTime) throws RemoteException {
+	public void createRiddle(String question, String receiver, Timestamp responseTime, boolean important) throws RemoteException {
 		UserRMI receiverUser = getContact(receiver);
-		Riddle r = new Riddle(question, responseTime, receiverUser.getPublicKey(), this.keyPair);
+		Riddle r = new Riddle(question, responseTime, receiverUser.getPublicKey(), this.keyPair, important);
 		riddlesSent.add(r);
 		receiverUser.addRiddle(r);
 	}
@@ -170,7 +170,7 @@ class User implements UserRMI {
 				continue;
 			}
 			String question = new String(CryptoUtils.decrypt(r.getEncryptedQuestion(), keyPair.getPrivate()));
-			riddles.add("Question: " + question + " - " + (r.getTimeoutDate().getTime() - new Date().getTime())/1000 + " seconds left");
+			riddles.add((r.isImportant()? "!! IMPORTANT RIDDLE: ": "Riddle: ") + question + " - " + (r.getTimeoutDate().getTime() - new Date().getTime())/1000 + " seconds left");
 		}
 		return riddles;
 	}

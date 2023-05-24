@@ -77,8 +77,10 @@ public class App {
 					String question = scanner.nextLine();
 					System.out.println("Enter the timeout in seconds:");
 					int timeout = Integer.parseInt(scanner.nextLine());
+					System.out.println("Is it important? (y/n)");
+					boolean important = scanner.nextLine().equals("y");
 					try {
-						user.createRiddle(question, name, new Timestamp(timeout * 1000));
+						user.createRiddle(question, name, new Timestamp(timeout * 1000), important);
 					} catch (RemoteException e) {
 						System.out.println("Error: " + e.getMessage());
 					}
