@@ -11,6 +11,7 @@ import java.security.PublicKey;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -165,7 +166,11 @@ class User implements UserRMI {
 	public List<String> listRiddles() throws RemoteException {
 		List<String> riddles = new ArrayList<>();
 		for (RiddleRMI r : riddlesReceived) {
-			riddles.add(new String(CryptoUtils.decrypt(r.getEncryptedQuestion(), keyPair.getPrivate())));
+			if (r.isAnswered() || r.getTimeoutDate().before(new Timestamp(System.currentTimeMillis()))) {
+				continue;
+			}
+			String question = new String(CryptoUtils.decrypt(r.getEncryptedQuestion(), keyPair.getPrivate()));
+			riddles.add("Question: " + question + " - " + (r.getTimeoutDate().getTime() - new Date().getTime())/1000 + " seconds left");
 		}
 		return riddles;
 	}

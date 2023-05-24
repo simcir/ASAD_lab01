@@ -17,6 +17,8 @@ interface RiddleRMI extends Remote {
 	public Date getTimeoutDate() throws RemoteException;
 
 	public void answer(String encryptedAnswer) throws RemoteException;
+
+	public boolean isAnswered() throws RemoteException;
 }
 
 class Riddle implements RiddleRMI {
@@ -86,7 +88,6 @@ class Riddle implements RiddleRMI {
 
 	public void remove() {
 		if (!isAnswered()){
-			this.encryptedAnswer = CryptoUtils.encrypt("Receiver didn't answer", ownerKeyPair.getPublic());
 			System.out.println("Riddle \"" + question + "\" timed out");
 		}
 		retractRiddle();
