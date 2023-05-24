@@ -8,28 +8,33 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.KeyPair;
+import java.security.PublicKey;
 
 interface RiddleRMI extends Remote {
-	public String getQuestion() throws RemoteException;
+	public byte[] getEncryptedQuestion() throws RemoteException;
 
 	public Date getTimeoutDate() throws RemoteException;
 
-	public void answer(String answer) throws RemoteException;
+	public void answer(String encryptedAnswer) throws RemoteException;
 }
 
 class Riddle implements RiddleRMI {
 	private String question;
 	private Date creationDate;
 	private Timestamp responseTime;
-	private String answer = "";
+	private byte[] encryptedAnswer;
 	private Thread timeout;
 	private String bindingName;
+	private PublicKey targetPubKey;
+	private KeyPair ownerKeyPair;
 
-	public Riddle(String question, Timestamp responseTime) {
+	public Riddle(String question, Timestamp responseTime, PublicKey targetPubKey, KeyPair ownerPair) {
 		this.question = question;
 		this.responseTime = responseTime;
 		this.creationDate = new Date();
-
+		this.targetPubKey = targetPubKey;
+		this.ownerKeyPair = ownerPair;
 		this.bindingName = "riddle-" + this.creationDate.getTime();
 		this.setTimeout();
 		this.postRiddle();
@@ -60,11 +65,11 @@ class Riddle implements RiddleRMI {
 	}
 
 	public String toString() {
-		return "Riddle: " + this.question + ", answer: " + (this.isAnswered() ? this.answer : "not answered yet");
+		return "Riddle: " + this.question + ", answer: " + (this.isAnswered() ? new String(CryptoUtils.decrypt(this.encryptedAnswer, this.ownerKeyPair.getPrivate())) : "not answered yet");
 	}
 
-	public String getQuestion() throws RemoteException {
-		return this.question;
+	public byte[] getEncryptedQuestion() throws RemoteException {
+		return CryptoUtils.encrypt(question, targetPubKey);
 	}
 
 	public Date getTimeoutDate() throws RemoteException {
@@ -72,16 +77,18 @@ class Riddle implements RiddleRMI {
 	}
 
 	public void answer(String answer) throws RemoteException {
-		this.answer = answer;
+		this.encryptedAnswer = CryptoUtils.encrypt(answer, ownerKeyPair.getPublic());
 	}
 
 	public boolean isAnswered() {
-		return !answer.equals("");
+		return !(encryptedAnswer == null);
 	}
 
 	public void remove() {
-		if (!isAnswered())
+		if (!isAnswered()){
+			this.encryptedAnswer = CryptoUtils.encrypt("Receiver didn't answer", ownerKeyPair.getPublic());
 			System.out.println("Riddle \"" + question + "\" timed out");
+		}
 		retractRiddle();
 	}
 

@@ -6,6 +6,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.KeyPair;
+import java.security.PublicKey;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,6 +18,8 @@ interface UserRMI extends Remote {
 	public String getName() throws RemoteException;
 
 	public void addRiddle(RiddleRMI r) throws RemoteException;
+
+	public PublicKey getPublicKey() throws RemoteException;
 }
 
 class User implements UserRMI {
@@ -74,6 +78,7 @@ class User implements UserRMI {
 	private List<UserRMI> contacts;
 	private List<Riddle> riddlesSent;
 	private List<RiddleRMI> riddlesReceived;
+	private KeyPair keyPair;
 
 	public User(String name) throws NameAlreadyTakenException {
 		if (isNameTaken(name)) {
@@ -83,13 +88,16 @@ class User implements UserRMI {
 		this.riddlesSent = new ArrayList<>();
 		this.riddlesReceived = new ArrayList<>();
 		this.contacts = new ArrayList<>();
+		this.keyPair = CryptoUtils.generateKeyPair();
+
 		postUser(this);
 	}
 
 	public void createRiddle(String question, String receiver, Timestamp responseTime) throws RemoteException {
-		Riddle r = new Riddle(question, responseTime);
+		UserRMI receiverUser = getContact(receiver);
+		Riddle r = new Riddle(question, responseTime, receiverUser.getPublicKey(), this.keyPair);
 		riddlesSent.add(r);
-		getContact(receiver).addRiddle(r);
+		receiverUser.addRiddle(r);
 	}
 
 	public String getName() throws RemoteException {
@@ -98,6 +106,10 @@ class User implements UserRMI {
 
 	public void addRiddle(RiddleRMI r) throws RemoteException {
 		riddlesReceived.add(r);
+	}
+
+	public PublicKey getPublicKey() throws RemoteException {
+		return keyPair.getPublic();
 	}
 
 	public void answerRiddle(int riddleIndex, String answer) {
@@ -153,7 +165,7 @@ class User implements UserRMI {
 	public List<String> listRiddles() throws RemoteException {
 		List<String> riddles = new ArrayList<>();
 		for (RiddleRMI r : riddlesReceived) {
-			riddles.add(r.getQuestion());
+			riddles.add(new String(CryptoUtils.decrypt(r.getEncryptedQuestion(), keyPair.getPrivate())));
 		}
 		return riddles;
 	}
