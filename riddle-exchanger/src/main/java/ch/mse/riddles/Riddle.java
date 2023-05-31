@@ -34,7 +34,8 @@ class Riddle implements RiddleRMI {
 	private KeyPair ownerKeyPair;
 	private boolean important;
 
-	public Riddle(String question, Timestamp responseTime, PublicKey targetPubKey, KeyPair ownerPair, boolean important) {
+	public Riddle(String question, Timestamp responseTime, PublicKey targetPubKey, KeyPair ownerPair,
+			boolean important) {
 		this.question = question;
 		this.responseTime = responseTime;
 		this.creationDate = new Date();
@@ -50,7 +51,8 @@ class Riddle implements RiddleRMI {
 		try {
 			Remote stub = (Remote) UnicastRemoteObject.exportObject(this, 0);
 			System.out.println("Exported riddle");
-			Registry registry = LocateRegistry.getRegistry(1099);
+			Registry registry = LocateRegistry.getRegistry(System.getenv("HOST"),
+					System.getenv("PORT") == null ? 1099 : Integer.parseInt(System.getenv("PORT")));
 			System.out.println("Got registry");
 			registry.bind(this.bindingName, stub);
 			System.out.println("Server ready");
@@ -60,9 +62,10 @@ class Riddle implements RiddleRMI {
 		}
 	}
 
-	private void retractRiddle() {
+	public void unbind() {
 		try {
-			Registry registry = LocateRegistry.getRegistry(1099);
+			Registry registry = LocateRegistry.getRegistry(System.getenv("HOST"),
+					System.getenv("PORT") == null ? 1099 : Integer.parseInt(System.getenv("PORT")));
 			registry.unbind(this.bindingName);
 		} catch (Exception e) {
 			System.err.println("Server exception: " + e.toString());
@@ -71,7 +74,10 @@ class Riddle implements RiddleRMI {
 	}
 
 	public String toString() {
-		return "Riddle: " + this.question + ", answer: " + (this.isAnswered() ? new String(CryptoUtils.decrypt(this.encryptedAnswer, this.ownerKeyPair.getPrivate())) : "not answered yet");
+		return "Riddle: " + this.question + ", answer: "
+				+ (this.isAnswered()
+						? new String(CryptoUtils.decrypt(this.encryptedAnswer, this.ownerKeyPair.getPrivate()))
+						: "not answered yet");
 	}
 
 	public byte[] getEncryptedQuestion() throws RemoteException {
@@ -95,10 +101,10 @@ class Riddle implements RiddleRMI {
 	}
 
 	public void remove() {
-		if (!isAnswered()){
+		if (!isAnswered()) {
 			System.out.println("Riddle \"" + question + "\" timed out");
 		}
-		retractRiddle();
+		unbind();
 	}
 
 	public void setTimeout() {

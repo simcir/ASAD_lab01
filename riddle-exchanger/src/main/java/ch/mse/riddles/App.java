@@ -9,25 +9,20 @@ import java.util.List;
 import java.util.Scanner;
 
 public class App {
-
-	public static void initRMI() {
+	public static void testRMI() {
 		try {
-			Registry r = LocateRegistry.getRegistry(1099);
+			Registry r = LocateRegistry.getRegistry(System.getenv("HOST"),
+					System.getenv("PORT") == null ? 1099 : Integer.parseInt(System.getenv("PORT")));
 			Arrays.stream(r.list()).forEach(System.out::println);
-			System.out.println("You are not the master");
+			System.out.println("Connected to RMI registry");
 		} catch (Exception e) {
-			try {
-				LocateRegistry.createRegistry(1099);
-				System.out.println("You are the master do not disconnect");
-			} catch (Exception e1) {
-				e1.printStackTrace();
-			}
+			System.out.println("Couldn't connect to RMI registry");
 		}
 	}
 
 	public static void main(String[] args) {
 		Scanner scanner = new Scanner(System.in);
-		initRMI();
+		testRMI();
 		User user;
 		while (true) {
 			try {
@@ -118,6 +113,7 @@ public class App {
 				case "5":
 					System.out.println("Exiting");
 					scanner.close();
+					user.unbindAll();
 					System.exit(0);
 					break;
 				default:
