@@ -27,7 +27,8 @@ class User implements UserRMI {
 
 	private static boolean isNameTaken(String name) {
 		try {
-			Registry registry = LocateRegistry.getRegistry(1099);
+			Registry registry = LocateRegistry.getRegistry(System.getenv("HOST"),
+					System.getenv("PORT") == null ? 1099 : Integer.parseInt(System.getenv("PORT")));
 			registry.lookup(name);
 			return true;
 		} catch (NotBoundException e) {
@@ -42,7 +43,8 @@ class User implements UserRMI {
 	private static void postUser(UserRMI u) {
 		try {
 			Remote stub = (Remote) UnicastRemoteObject.exportObject(u, 0);
-			Registry registry = LocateRegistry.getRegistry(1099);
+			Registry registry = LocateRegistry.getRegistry(System.getenv("HOST"),
+					System.getenv("PORT") == null ? 1099 : Integer.parseInt(System.getenv("PORT")));
 			registry.bind("user-" + u.getName(), stub);
 			System.out.println("User created");
 		} catch (Exception e) {
@@ -53,7 +55,8 @@ class User implements UserRMI {
 
 	public List<String> listOthersUsers() {
 		try {
-			Registry registry = LocateRegistry.getRegistry(1099);
+			Registry registry = LocateRegistry.getRegistry(System.getenv("HOST"),
+					System.getenv("PORT") == null ? 1099 : Integer.parseInt(System.getenv("PORT")));
 			return Arrays.stream(registry.list()).filter(s -> s.startsWith("user-") && !s.equals("user-" + this.name))
 					.map(s -> s.substring(5)).collect(Collectors.toList());
 		} catch (Exception e) {
@@ -65,7 +68,8 @@ class User implements UserRMI {
 
 	private static UserRMI getUser(String name) {
 		try {
-			Registry registry = LocateRegistry.getRegistry(1099);
+			Registry registry = LocateRegistry.getRegistry(System.getenv("HOST"),
+					System.getenv("PORT") == null ? 1099 : Integer.parseInt(System.getenv("PORT")));
 			return (UserRMI) registry.lookup("user-" + name);
 		} catch (Exception e) {
 			System.err.println("Can't get user: " + e.toString());
@@ -94,7 +98,8 @@ class User implements UserRMI {
 		postUser(this);
 	}
 
-	public void createRiddle(String question, String receiver, Timestamp responseTime, boolean important) throws RemoteException {
+	public void createRiddle(String question, String receiver, Timestamp responseTime, boolean important)
+			throws RemoteException {
 		UserRMI receiverUser = getContact(receiver);
 		Riddle r = new Riddle(question, responseTime, receiverUser.getPublicKey(), this.keyPair, important);
 		riddlesSent.add(r);
@@ -165,14 +170,37 @@ class User implements UserRMI {
 
 	public List<String> listRiddles() throws RemoteException {
 		List<String> riddles = new ArrayList<>();
+		List<RiddleRMI> keep = new ArrayList<>();
 		for (RiddleRMI r : riddlesReceived) {
-			if (r.isAnswered() || r.getTimeoutDate().before(new Timestamp(System.currentTimeMillis()))) {
+			try {
+				if (r.isAnswered() || r.getTimeoutDate().before(new Timestamp(System.currentTimeMillis()))) {
+					continue;
+				}
+				String question = new String(CryptoUtils.decrypt(r.getEncryptedQuestion(), keyPair.getPrivate()));
+				riddles.add((r.isImportant() ? "!! IMPORTANT RIDDLE: " : "Riddle: ") + question + " - "
+						+ (r.getTimeoutDate().getTime() - new Date().getTime()) / 1000 + " seconds left");
+				keep.add(r);
+
+			} catch (Exception e) {
 				continue;
 			}
-			String question = new String(CryptoUtils.decrypt(r.getEncryptedQuestion(), keyPair.getPrivate()));
-			riddles.add((r.isImportant()? "!! IMPORTANT RIDDLE: ": "Riddle: ") + question + " - " + (r.getTimeoutDate().getTime() - new Date().getTime())/1000 + " seconds left");
 		}
+		riddlesReceived = keep;
 		return riddles;
+	}
+
+	public void unbindAll() {
+		for (Riddle r : riddlesSent) {
+			r.unbind();
+		}
+		try {
+			Registry registry = LocateRegistry.getRegistry(System.getenv("HOST"),
+					System.getenv("PORT") == null ? 1099 : Integer.parseInt(System.getenv("PORT")));
+			registry.unbind("user-" + this.name);
+		} catch (Exception e) {
+			System.err.println("Error unbinding user: " + e.toString());
+			e.printStackTrace();
+		}
 	}
 }
 

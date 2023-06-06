@@ -36,15 +36,26 @@
           <version>1.6.0</version>
           <executions>
             <execution>
+              <id>client</id>
               <goals>
                 <goal>java</goal>
               </goals>
+              <configuration>
+                <!-- Point here to your main class -->
+                <mainClass>ch.mse.riddles.App</mainClass>
+              </configuration>
+            </execution>
+            <execution>
+              <id>server</id>
+              <goals>
+                <goal>java</goal>
+              </goals>
+              <configuration>
+                <!-- Point here to your main class -->
+                <mainClass>ch.mse.riddles.Server</mainClass>
+              </configuration>
             </execution>
           </executions>
-          <configuration>
-            <!-- Point here to your main class -->
-            <mainClass>ch.mse.riddles.App</mainClass>
-          </configuration>
         </plugin>
 
         <!-- clean lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#clean_Lifecycle -->
