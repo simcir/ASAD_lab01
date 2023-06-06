@@ -8,6 +8,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
+// imports for the socket
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.io.OutputStreamWriter;
+
 public class App {
 	public static void testRMI() {
 		try {
@@ -26,13 +33,43 @@ public class App {
 		User user;
 		while (true) {
 			try {
+				System.out.println("Enter your action : login or register");
+				String userAction = scanner.nextLine();
 				System.out.println("Enter your name:");
-				// here we go send a message to the auth server with the name
-				// ....
-				user = new User(scanner.nextLine());
-				break;
+				String userName = scanner.nextLine();
+				System.out.println("Enter your password:");
+				String userPassword = scanner.nextLine();
+				String message =  userName + ";" + userPassword + ";" + userAction + ";";
+				// connect to the server :
+				System.out.println("Connecting to the server");
+				Socket socket = new Socket("localhost", 21234);
+				System.out.println("Connected to the server");
+
+				PrintWriter out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"), true);
+				out.println(message);
+				// get the response from the server
+				System.out.println("Waiting for the server response");
+				BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				String response = in.readLine();
+				System.out.println("Server response : " + response);
+
+				if (response.equals("success")) {
+					System.out.println("You are logged in");
+					user = new User(userName);
+					break;
+				} else {
+					System.out.println("Error in the authentication process");
+				}
+
+				socket.close();
+				// user = new User(scanner.nextLine());
+				// break;
 			} catch (NameAlreadyTakenException e) {
 				System.out.println("Name already taken");
+			} catch (RemoteException e) {
+				System.out.println("Error: " + e.getMessage());
+			} catch (Exception e) {
+				System.out.println("Error: " + e.getMessage());
 			}
 		}
 		while (true) {
