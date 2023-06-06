@@ -32,6 +32,8 @@ public class App {
 		while (true) {
 			try {
 				System.out.println("Enter your name:");
+				// here we go send a message to the auth server with the name
+				// ....
 				user = new User(scanner.nextLine());
 				break;
 			} catch (NameAlreadyTakenException e) {
